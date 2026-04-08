@@ -1,6 +1,5 @@
 import type { Article, GNewsResponse } from "../types/news";
 
-const API_KEY = import.meta.env.VITE_GNEWS_API_KEY;
 const CACHE_KEY = "ai_news_cache";
 const CACHE_TIME = 24 * 60 * 60 * 1000; // 24 horas
 
@@ -13,29 +12,18 @@ export const fetchAINews = async (): Promise<Article[]> => {
     }
   }
 
-  const query =
-    '("DeepSeek" OR "LLM architecture" OR "AI Agents" OR "Anthropic" OR "Google DeepMind" OR "Meta AI" OR "OpenAI")';
-  const targetUrl = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=10&apikey=${API_KEY}`;
-  const proxyUrl = `https://cors-anywhere.herokuapp.com/${targetUrl}`;
+  const response = await fetch("/api/get-news");
 
-  const response = await fetch(proxyUrl, {
-    headers: {
-      "X-Requested-With": "XMLHttpRequest",
-    },
-  });
-
-  // Manejo de Errores Específicos de GNews
+  // Manejo de Errores Específicos
   if (!response.ok) {
     if (response.status === 403) {
-      throw new Error("403 Forbidden: Verifica que tu API Key sea válida.");
+      throw new Error("403 Forbidden: Verifica la configuración en Netlify.");
     }
     if (response.status === 429) {
-      throw new Error(
-        "429 Too Many Requests: Has superado el límite gratuito de 100 peticiones diarias en GNews.",
-      );
+      throw new Error("429 Too Many Requests: Límite de GNews superado.");
     }
     throw new Error(
-      `Error inesperado al conectar con la API (${response.status})`,
+      `Error inesperado al conectar con la función de Netlify (${response.status})`,
     );
   }
 
