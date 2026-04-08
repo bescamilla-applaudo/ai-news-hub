@@ -1,0 +1,10 @@
+{
+  "output": {
+    "filePath": "project-context.txt",
+    "style": "markdown"
+  },
+  "include": ["src/**/*", "vite.config.ts", "package.json"],
+  "ignore": {
+    "customPatterns": ["*.log", "dist", ".vscode"]
+  }
+}
