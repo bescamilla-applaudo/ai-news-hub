@@ -15,9 +15,14 @@ export const fetchAINews = async (): Promise<Article[]> => {
 
   const query =
     '("DeepSeek" OR "LLM architecture" OR "AI Agents" OR "Anthropic" OR "Google DeepMind" OR "Meta AI" OR "OpenAI")';
-  const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=10&apikey=${API_KEY}`;
+  const targetUrl = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&max=10&apikey=${API_KEY}`;
+  const proxyUrl = `https://cors-anywhere.herokuapp.com/${targetUrl}`;
 
-  const response = await fetch(url);
+  const response = await fetch(proxyUrl, {
+    headers: {
+      "X-Requested-With": "XMLHttpRequest",
+    },
+  });
 
   // Manejo de Errores Específicos de GNews
   if (!response.ok) {
