@@ -33,8 +33,18 @@ export const UnifiedArticleSchema = z.object({
     name: z.string(),
     url: z.string().optional(),
   }),
-  type: z.enum(["news", "forum", "tutorial"]).optional(),
+  type: z
+    .enum(["news", "forum", "tutorial", "article"])
+    .optional()
+    .default("news"),
 });
+
+export interface SectionedNews {
+  gnews: UnifiedArticle[];
+  hackerNews: UnifiedArticle[];
+  devto: UnifiedArticle[];
+  reddit: UnifiedArticle[];
+}
 
 export type UnifiedArticle = z.infer<typeof UnifiedArticleSchema>;
 export type GNewsArticle = z.infer<typeof GNewsArticleSchema>;

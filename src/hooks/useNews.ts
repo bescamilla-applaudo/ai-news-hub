@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { fetchAINews } from "../api/newsService";
-import type { UnifiedArticle } from "../types/schemas";
+import type { SectionedNews } from "../types/schemas";
 
 export const useNews = () => {
-  const [articles, setArticles] = useState<UnifiedArticle[]>([]);
+  const [news, setNews] = useState<SectionedNews | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -11,22 +11,16 @@ export const useNews = () => {
     const loadNews = async () => {
       try {
         setLoading(true);
-        setError(null);
         const data = await fetchAINews();
-        setArticles(data);
+        setNews(data);
       } catch (err) {
-        // Manejo básico de errores (se puede expandir para leer códigos HTTP)
-        setError(
-          "No se pudieron cargar las noticias. Verifica tu API Key o el límite de peticiones (Error 403/429)." +
-            err,
-        );
+        setError("Error al cargar secciones.");
       } finally {
         setLoading(false);
       }
     };
-
     loadNews();
   }, []);
 
-  return { articles, loading, error };
+  return { news, loading, error };
 };

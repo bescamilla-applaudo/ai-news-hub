@@ -8,7 +8,7 @@ describe("getNews Integration Test (Mocked)", () => {
     vi.clearAllMocks();
   });
 
-  it("should aggregate news from GNews and Hacker News successfully", async () => {
+  it("should return sectioned news results from all sources", async () => {
     // Mock GNews Response
     const mockGNews = {
       articles: [
@@ -35,6 +35,34 @@ describe("getNews Integration Test (Mocked)", () => {
       ],
     };
 
+    // Mock Dev.to Response
+    const mockDevTo = [
+      {
+        title: "DevTo Post",
+        description: "Dev.to Description",
+        url: "https://dev.to/post",
+        social_image: "https://dev.to/img.png",
+        published_at: "2026-04-09T11:00:00Z",
+      },
+    ];
+
+    // Mock Reddit Response
+    const mockReddit = {
+      data: {
+        children: [
+          {
+            data: {
+              title: "Reddit Post",
+              permalink: "/r/test",
+              ups: 50,
+              created_utc: 1712620800,
+              subreddit: "LocalLLaMA",
+            },
+          },
+        ],
+      },
+    };
+
     // Mock globals fetch
     const globalFetch = vi
       .fn()
@@ -47,6 +75,16 @@ describe("getNews Integration Test (Mocked)", () => {
         ok: true,
         status: 200,
         json: async () => mockHN,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockDevTo,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockReddit,
       });
 
     vi.stubGlobal("fetch", globalFetch);
@@ -59,12 +97,11 @@ describe("getNews Integration Test (Mocked)", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.articles).toHaveLength(2);
-    expect(data.articles[0].source.name).toBe("GNews Source");
-    expect(data.articles[1].source.name).toBe("Hacker News");
-
-    // Check sorting (2026-04-09T10:00:00Z should be first)
-    expect(data.articles[0].title).toBe("AI News");
+    expect(data.gnews).toHaveLength(1);
+    expect(data.hackerNews).toHaveLength(1);
+    expect(data.devto).toHaveLength(1);
+    expect(data.reddit).toHaveLength(1);
+    expect(data.gnews[0].title).toBe("AI News");
   });
 
   it("should return 403 if origin is not allowed in production", async () => {

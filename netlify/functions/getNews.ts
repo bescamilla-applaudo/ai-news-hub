@@ -32,6 +32,7 @@ const normalizeGNews = (article: unknown): UnifiedArticle | null => {
     image: art.image || "",
     publishedAt: art.publishedAt,
     source: { name: art.source.name },
+    type: "news",
   };
 };
 
@@ -46,6 +47,7 @@ const normalizeHN = (hit: unknown): UnifiedArticle | null => {
     image: "https://news.ycombinator.com/favicon.ico",
     publishedAt: story.created_at,
     source: { name: "Hacker News" },
+    type: "forum",
   };
 };
 
@@ -60,51 +62,120 @@ export default async (req: Request) => {
     });
   }
 
-  const techQuery = encodeURIComponent(
-    '("LLM architecture" OR "AI Agents" OR "LangChain" OR "DeepSeek" OR "Vector Databases" OR "RAG systems") NOT (stock OR finance OR crypto)',
-  );
+  // --- QUERIES DE DESARROLLO (Filtrado de ruido corporativo) ---
+  const techKeywords =
+    '"LLM architecture" OR "AI Agents" OR "LangChain" OR "DeepSeek" OR "Vector DB" OR "RAG" OR "PyTorch" OR "HuggingFace" OR "inference" OR "finetuning"';
+  const noiseExclusion =
+    "NOT (stock OR earnings OR series A OR layoffs OR finance OR crypto OR investment OR market report)";
+  const techQuery = encodeURIComponent(`(${techKeywords}) ${noiseExclusion}`);
 
   try {
-    const [gnewsRes, hnRes] = await Promise.allSettled([
+    const [gnewsRes, hnRes, devtoRes, redditRes] = await Promise.allSettled([
       fetch(
-        `https://gnews.io/api/v4/search?q=${techQuery}&lang=en&max=10&apikey=${API_KEY}`,
+        `https://gnews.io/api/v4/search?q=${techQuery}&lang=en&max=8&apikey=${API_KEY}`,
       ),
       fetch(
-        `https://hn.algolia.com/api/v1/search?query=AI+architecture&tags=story&hitsPerPage=10`,
+        `https://hn.algolia.com/api/v1/search?query=AI+architecture&tags=story&hitsPerPage=8`,
+      ),
+      fetch(`https://dev.to/api/articles?tag=ai&per_page=8`),
+      fetch(
+        `https://www.reddit.com/r/LocalLLaMA+MachineLearning+ArtificialInteligence/top.json?t=day&limit=8`,
+        {
+          headers: { "User-Agent": "ai-news-hub/1.0" },
+        },
       ),
     ]);
 
-    const articles: UnifiedArticle[] = [];
+    const sections = {
+      gnews: [] as UnifiedArticle[],
+      hackerNews: [] as UnifiedArticle[],
+      devto: [] as UnifiedArticle[],
+      reddit: [] as UnifiedArticle[],
+    };
 
+    // 1. GNEWS
     if (gnewsRes.status === "fulfilled" && gnewsRes.value.ok) {
       const data = await gnewsRes.value.json();
       const rawArticles = z.array(z.unknown()).safeParse(data.articles);
       if (rawArticles.success) {
         rawArticles.data.forEach((a) => {
           const normalized = normalizeGNews(a);
-          if (normalized) articles.push(normalized);
+          if (normalized) sections.gnews.push(normalized);
         });
       }
     }
 
+    // 2. HACKER NEWS
     if (hnRes.status === "fulfilled" && hnRes.value.ok) {
       const data = await hnRes.value.json();
       const rawHits = z.array(z.unknown()).safeParse(data.hits);
       if (rawHits.success) {
         rawHits.data.forEach((h) => {
           const normalized = normalizeHN(h);
-          if (normalized) articles.push(normalized);
+          if (normalized) sections.hackerNews.push(normalized);
         });
       }
     }
 
-    // Sort by freshness
-    articles.sort(
-      (a, b) =>
-        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
-    );
+    // 3. DEV.TO
+    if (devtoRes.status === "fulfilled" && devtoRes.value.ok) {
+      const data = (await devtoRes.value.json()) as {
+        title: string;
+        description?: string;
+        url: string;
+        social_image?: string;
+        cover_image?: string;
+        published_at: string;
+      }[];
+      data?.forEach((post) => {
+        sections.devto.push({
+          title: post.title,
+          description: post.description || "Artículo técnico en Dev.to",
+          url: post.url,
+          image: post.social_image || post.cover_image || "",
+          publishedAt: post.published_at,
+          source: { name: "Dev.to" },
+          type: "article",
+        });
+      });
+    }
 
-    return new Response(JSON.stringify({ articles }), {
+    // 4. REDDIT (JSON API - Sin API Key para lectura pública)
+    if (redditRes.status === "fulfilled" && redditRes.value.ok) {
+      const data = (await redditRes.value.json()) as {
+        data?: {
+          children?: {
+            data: {
+              title: string;
+              permalink: string;
+              subreddit: string;
+              ups: number;
+              thumbnail?: string;
+              created_utc: number;
+            };
+          }[];
+        };
+      };
+      data.data?.children?.forEach((child) => {
+        const post = child.data;
+        sections.reddit.push({
+          title: post.title,
+          description: `Discusión en r/${post.subreddit}. Upvotes: ${post.ups}`,
+          url: `https://reddit.com${post.permalink}`,
+          image:
+            post.thumbnail &&
+            post.thumbnail !== "self" &&
+            post.thumbnail !== "default"
+              ? post.thumbnail
+              : "https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png",
+          publishedAt: new Date(post.created_utc * 1000).toISOString(),
+          source: { name: `Reddit /r/${post.subreddit}` },
+          type: "forum",
+        });
+      });
+    }
+
+    return new Response(JSON.stringify(sections), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
