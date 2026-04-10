@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { fetchAINews } from "../api/newsService";
-import type { Article } from "../types/news";
+import type { UnifiedArticle } from "../types/schemas";
 
 export const useNews = () => {
-  const [articles, setArticles] = useState<Article[]>([]);
+  const [articles, setArticles] = useState<UnifiedArticle[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 

@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import type { Article } from "../types/news";
+import { type UnifiedArticle } from "../types/schemas";
 
 interface NewsModalProps {
-  article: Article;
+  article: UnifiedArticle;
   onClose: () => void;
 }
 

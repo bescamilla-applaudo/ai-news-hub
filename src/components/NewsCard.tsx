@@ -1,8 +1,8 @@
-import type { Article } from "../types/news";
+import { type UnifiedArticle } from "../types/schemas";
 
 interface NewsCardProps {
-  article: Article;
-  onClick: (article: Article) => void;
+  article: UnifiedArticle;
+  onClick: (article: UnifiedArticle) => void;
 }
 
 // Imagen por defecto con estilo tech si la API no devuelve una
