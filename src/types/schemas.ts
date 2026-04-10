@@ -26,6 +26,7 @@ export const HNStorySchema = z.object({
 export const UnifiedArticleSchema = z.object({
   title: z.string(),
   description: z.string(),
+  content: z.string().optional(),
   url: z.string(),
   image: z.string(),
   publishedAt: z.string(),

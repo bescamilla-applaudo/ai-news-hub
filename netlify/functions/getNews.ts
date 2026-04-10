@@ -95,7 +95,7 @@ export default async (req: Request) => {
 
     // 1. GNEWS
     if (gnewsRes.status === "fulfilled" && gnewsRes.value.ok) {
-      const data = await gnewsRes.value.json();
+      const data = (await gnewsRes.value.json()) as { articles?: unknown[] };
       const rawArticles = z.array(z.unknown()).safeParse(data.articles);
       if (rawArticles.success) {
         rawArticles.data.forEach((a) => {
@@ -107,7 +107,7 @@ export default async (req: Request) => {
 
     // 2. HACKER NEWS
     if (hnRes.status === "fulfilled" && hnRes.value.ok) {
-      const data = await hnRes.value.json();
+      const data = (await hnRes.value.json()) as { hits?: unknown[] };
       const rawHits = z.array(z.unknown()).safeParse(data.hits);
       if (rawHits.success) {
         rawHits.data.forEach((h) => {
